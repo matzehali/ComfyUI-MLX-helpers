@@ -1,12 +1,12 @@
-"""Shared infrastructure for the ComfyUI MLX port projects.
+"""Shared infrastructure library for the ComfyUI MLX port projects.
 
-Two entry points, one codebase:
+This is a plain importable library — not a ComfyUI node pack. Each MLX port keeps
+its own (necessarily model-specific) loader/inference nodes and imports the
+shared helpers here instead of carrying near-identical copies of the
+version/logo/cleanup/model-resolution boilerplate::
 
-* **Importable library** — projects add this repo to their requirements and
-  ``from comfyui_mlx_helpers import node_meta, resolve_weight_file, ...`` instead
-  of carrying near-identical copies of the version/logo/cleanup boilerplate.
-* **Node pack** — when loaded as a ComfyUI custom node it registers a few
-  model-agnostic nodes (see :mod:`comfyui_mlx_helpers.nodes`).
+    from comfyui_mlx_helpers import node_meta, resolve_weight_file, load_safetensors
+    meta = node_meta.for_repo(__file__, fallback="v0.1", log_prefix="Foo-MLX")
 """
 
 from __future__ import annotations
@@ -37,7 +37,6 @@ from .node_meta import (
     resolve_version,
     with_mlx_metadata,
 )
-from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
 
 __version__ = node_meta.VERSION
 
@@ -66,8 +65,5 @@ __all__ = [
     "torch_image_to_pil",
     "AnyType",
     "ANY_TYPE",
-    # node pack
-    "NODE_CLASS_MAPPINGS",
-    "NODE_DISPLAY_NAME_MAPPINGS",
     "__version__",
 ]

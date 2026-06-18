@@ -52,7 +52,7 @@ if git ls-remote --exit-code --tags "${remote_name}" "refs/tags/${new_tag}" >/de
 fi
 
 echo "Running project checks..."
-"${python_bin}" -m py_compile __init__.py comfyui_mlx_helpers/*.py
+"${python_bin}" -m py_compile comfyui_mlx_helpers/*.py
 
 if [[ -n "$(git status --porcelain)" ]]; then
   echo
