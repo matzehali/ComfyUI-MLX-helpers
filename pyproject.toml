@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "comfyui-mlx-helpers"
+version = "0.1.0"
+description = "Shared infrastructure + generic nodes for the ComfyUI MLX port projects (Apple Silicon)."
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+# Safe to install into ComfyUI's Python — MLX ships wheels for current Python.
+# torch and Pillow are provided by ComfyUI itself and only used lazily.
+dependencies = ["mlx>=0.22", "numpy", "huggingface_hub>=0.36.0"]
+
+[project.urls]
+Repository = "https://github.com/matzehali/ComfyUI-MLX-helpers"
+
+[tool.setuptools.packages.find]
+include = ["comfyui_mlx_helpers*"]
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "MLX Helpers"
