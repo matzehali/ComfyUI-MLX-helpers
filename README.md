@@ -1,11 +1,11 @@
 # ComfyUI-MLX-helpers
 
-Shared **infrastructure library** for the ComfyUI **MLX port** projects on Apple
-Silicon (DepthAnythingV2-MLX, SAM3, Gemma3, Bernini-MLX, LTXVideo-CustomMLX, …).
+Shared **infrastructure library** for ComfyUI **MLX port** projects on Apple
+Silicon.
 
 Every MLX port was re-implementing the same boilerplate: a `node_meta.py` that
 reads the git tag for the node title, an Apple-logo naming convention, model-dir
-resolution that honors the menubar app's models folder and downloads from
+resolution that honors custom models folder and downloads from
 HuggingFace, MLX/Metal memory cleanup, and torch↔MLX tensor conversion. This
 package centralizes all of that so each port keeps **only** its model-specific
 code.
