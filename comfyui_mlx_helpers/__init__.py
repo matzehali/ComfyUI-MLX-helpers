@@ -37,6 +37,11 @@ from .node_meta import (
     resolve_version,
     with_mlx_metadata,
 )
+from .video_normalize import (
+    next_frame_count,
+    next_multiple,
+    normalize_video,
+)
 
 __version__ = node_meta.VERSION
 
@@ -65,5 +70,9 @@ __all__ = [
     "torch_image_to_pil",
     "AnyType",
     "ANY_TYPE",
+    # video normalization (shared across MLX ports)
+    "normalize_video",
+    "next_multiple",
+    "next_frame_count",
     "__version__",
 ]
