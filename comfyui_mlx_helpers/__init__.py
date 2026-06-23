@@ -45,9 +45,17 @@ from .video_normalize import (
 
 __version__ = node_meta.VERSION
 
+# Absolute path to the shared ComfyUI web extension directory (brand node colors).
+# A node pack exposes it as its own ``WEB_DIRECTORY`` so ComfyUI serves/loads it;
+# ComfyUI accepts an absolute WEB_DIRECTORY (os.path.join drops its relative base).
+import os as _os
+
+WEB_DIRECTORY = _os.path.join(_os.path.dirname(__file__), "web")
+
 __all__ = [
     "node_meta",
     "model_resolve",
+    "WEB_DIRECTORY",
     # naming / versioning
     "LOGO",
     "RepoMeta",

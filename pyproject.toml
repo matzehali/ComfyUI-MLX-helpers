@@ -17,3 +17,6 @@ Repository = "https://github.com/matzehali/ComfyUI-MLX-helpers"
 
 [tool.setuptools.packages.find]
 include = ["comfyui_mlx_helpers*"]
+
+[tool.setuptools.package-data]
+comfyui_mlx_helpers = ["web/*.js"]
