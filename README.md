@@ -1,3 +1,5 @@
+> Agents: read `AGENTS.md` before working in this repo.
+
 # ComfyUI-MLX-helpers
 
 Shared **infrastructure library** for ComfyUI **MLX port** projects on Apple
