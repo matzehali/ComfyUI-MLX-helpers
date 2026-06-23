@@ -52,10 +52,31 @@ import os as _os
 
 WEB_DIRECTORY = _os.path.join(_os.path.dirname(__file__), "web")
 
+
+def install_node_colors(web_dir: str) -> None:
+    """Copy the shared node-colors ``.js`` into a pack's own ``web`` dir.
+
+    For packs that already define their own ``WEB_DIRECTORY`` (so they cannot
+    point it at the helper); call from ``__init__`` with that web dir. The copied
+    file is served per pack and self-scopes to that pack's nodes. No-op on error.
+    """
+    import shutil
+
+    try:
+        _os.makedirs(web_dir, exist_ok=True)
+        shutil.copyfile(
+            _os.path.join(WEB_DIRECTORY, "mlx_node_colors.js"),
+            _os.path.join(web_dir, "mlx_node_colors.js"),
+        )
+    except Exception:
+        pass
+
+
 __all__ = [
     "node_meta",
     "model_resolve",
     "WEB_DIRECTORY",
+    "install_node_colors",
     # naming / versioning
     "LOGO",
     "RepoMeta",
