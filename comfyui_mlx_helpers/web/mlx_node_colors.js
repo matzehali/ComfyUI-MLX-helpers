@@ -20,6 +20,12 @@ if (PACK) {
         beforeRegisterNodeDef(nodeType, nodeData) {
             const mod = (nodeData && nodeData.python_module) || "";
             if (mod !== "custom_nodes." + PACK && !mod.endsWith("." + PACK)) return;
+            // Only style nodes WE register: every one goes through the shared
+            // versioned() display name ("<name> vX.Y[.Z]"). Upstream nodes bundled
+            // into a port (e.g. the LTX Draw / Sparse Track Editor nodes) carry no
+            // version suffix, so they stay un-styled.
+            const dn = (nodeData && nodeData.display_name) || "";
+            if (!/\sv\d+(\.\d+)+/.test(dn)) return;
             const onCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
                 const r = onCreated ? onCreated.apply(this, arguments) : undefined;
