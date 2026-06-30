@@ -14,10 +14,14 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 from typing import Callable
 
 _SAFE_EXT = ".safetensors"
+_PROGRESS_WIDTH = 24
+_PROGRESS_MIN_SECONDS = 2.0
+_PROGRESS_MIN_FRACTION = 0.05
 
 
 def configured_models_dir() -> Path | None:
@@ -61,6 +65,131 @@ def _looks_like_model_dir(path: Path) -> bool:
     )
 
 
+def _format_size(value: int | float | None) -> str:
+    if value is None:
+        return "?"
+    amount = float(value)
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if abs(amount) < 1024.0 or unit == "TB":
+            if unit == "B":
+                return f"{amount:.0f} {unit}"
+            return f"{amount:.1f} {unit}"
+        amount /= 1024.0
+    return f"{amount:.1f} TB"
+
+
+def _make_log_tqdm(status: Callable[[str], None], label: str):
+    """Build a tiny tqdm-compatible progress class backed by the node logger.
+
+    ``huggingface_hub`` accepts ``tqdm_class`` for both whole-repo snapshots and
+    single-file downloads. ComfyUI logs do not render terminal progress bars, so
+    this class emits rate-limited plain text progress lines instead.
+    """
+
+    class _LogTqdm:
+        def __init__(self, iterable=None, *args, **kwargs):
+            del args
+            self.iterable = iterable
+            self.desc = kwargs.get("desc") or label
+            self.total = kwargs.get("total")
+            if self.total is None and iterable is not None:
+                try:
+                    self.total = len(iterable)
+                except TypeError:
+                    self.total = None
+            self.n = kwargs.get("initial") or 0
+            self.unit = kwargs.get("unit") or "it"
+            self.unit_scale = bool(kwargs.get("unit_scale"))
+            self._started = time.monotonic()
+            self._last_log = 0.0
+            self._last_fraction = -1.0
+            self._last_logged_n: int | float | None = None
+            self._last_logged_total: int | float | None = None
+            self._closed = False
+            self.refresh(force=True)
+
+        def __iter__(self):
+            if self.iterable is None:
+                return iter(())
+            for item in self.iterable:
+                yield item
+                self.update(1)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            del exc_type, exc_value, traceback
+            self.close()
+
+        def _line(self) -> str:
+            total = self.total if self.total not in (None, 0) else None
+            if total:
+                fraction = max(0.0, min(1.0, float(self.n) / float(total)))
+                filled = int(round(fraction * _PROGRESS_WIDTH))
+                bar = "#" * filled + "-" * (_PROGRESS_WIDTH - filled)
+                percent = f"{fraction * 100:5.1f}%"
+            else:
+                bar = "?" * _PROGRESS_WIDTH
+                percent = "  ?.?%"
+
+            if self.unit == "B" or self.unit_scale:
+                current = _format_size(self.n)
+                ending = _format_size(total) if total else "?"
+            else:
+                current = f"{int(self.n)} {self.unit}"
+                ending = f"{int(total)} {self.unit}" if total else f"? {self.unit}"
+
+            elapsed = max(time.monotonic() - self._started, 0.001)
+            rate = ""
+            if self.unit == "B" or self.unit_scale:
+                rate = f" {_format_size(float(self.n) / elapsed)}/s"
+
+            return f"{label}: [{bar}] {percent} {current}/{ending}{rate}"
+
+        def _should_log(self, force: bool) -> bool:
+            if force:
+                return True
+            now = time.monotonic()
+            total = self.total if self.total not in (None, 0) else None
+            fraction = float(self.n) / float(total) if total else None
+            advanced_fraction = (
+                fraction is not None
+                and (self._last_fraction < 0 or fraction - self._last_fraction >= _PROGRESS_MIN_FRACTION)
+            )
+            return advanced_fraction or (now - self._last_log >= _PROGRESS_MIN_SECONDS)
+
+        def refresh(self, *args, force: bool = False, **kwargs):
+            del args, kwargs
+            if self._closed or not self._should_log(force):
+                return
+            status(self._line())
+            self._last_logged_n = self.n
+            self._last_logged_total = self.total
+            self._last_log = time.monotonic()
+            total = self.total if self.total not in (None, 0) else None
+            if total:
+                self._last_fraction = float(self.n) / float(total)
+
+        def update(self, n: int | float | None = 1) -> None:
+            self.n += n or 0
+            self.refresh()
+
+        def set_description(self, desc: str | None = None, *args, **kwargs) -> None:
+            del args, kwargs
+            if desc:
+                self.desc = desc
+            self.refresh(force=True)
+
+        def close(self) -> None:
+            if not self._closed:
+                if self.n != self._last_logged_n or self.total != self._last_logged_total:
+                    self.refresh(force=True)
+                self._closed = True
+
+    return _LogTqdm
+
+
 def resolve_model_dir(
     source: str,
     *,
@@ -96,7 +225,9 @@ def resolve_model_dir(
         local_dir_use_symlinks=False,  # real files, no blob symlinks
         cache_dir=local / ".cache",
         resume_download=True,
+        tqdm_class=_make_log_tqdm(status, f"download {source}"),
     )
+    status(f"download complete: {downloaded}")
     return Path(downloaded)
 
 
@@ -133,7 +264,14 @@ def resolve_weight_file(
         status(f"downloading {source} from {hf_repo}")
         from huggingface_hub import hf_hub_download
 
-        return Path(hf_hub_download(hf_repo, source, local_dir=str(base)))
+        downloaded = hf_hub_download(
+            hf_repo,
+            source,
+            local_dir=str(base),
+            tqdm_class=_make_log_tqdm(status, f"download {source}"),
+        )
+        status(f"download complete: {downloaded}")
+        return Path(downloaded)
 
     model_dir = resolve_model_dir(source, subdir=subdir, status=status)
     if model_dir.is_file():

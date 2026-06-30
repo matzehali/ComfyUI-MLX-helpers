@@ -63,6 +63,7 @@ def get_compiled_callable(owner, cache_name: str, fn, label: str = ""):
     key = (cache_name, id(target))
     compiled = cache.get(key)
     if compiled is None:
+        print(f"[MLX Compile] compiling {label or cache_name} ...")
         try:
             compiled_fn = mx.compile(fn)
         except Exception as exc:
@@ -70,16 +71,34 @@ def get_compiled_callable(owner, cache_name: str, fn, label: str = ""):
             cache[key] = fn
             return fn
 
+        disabled = False
+
         def compiled(*args, **kwargs):
+            nonlocal disabled
+            if disabled:
+                return fn(*args, **kwargs)
             try:
                 return compiled_fn(*args, **kwargs)
             except Exception as exc:
+                disabled = True
                 print(f"[MLX Compile] disabled {label or cache_name} after failure: {exc}")
                 cache[key] = fn
                 return fn(*args, **kwargs)
 
         cache[key] = compiled
     return compiled
+
+
+def clear_compiled_callables(owner) -> None:
+    """Discard wrappers retained by :func:`get_compiled_callable` on *owner*.
+
+    Call this before or immediately after mutating/replacing the owner's weights.
+    Existing external references to a wrapper cannot be revoked, so model code
+    must also stop using those references across the mutation boundary.
+    """
+    cache = getattr(owner, "_mlxhelpers_compiled", None)
+    if cache is not None:
+        cache.clear()
 
 
 def load_safetensors(path, *, dtype=None, status: Callable[[str], None] = print) -> dict:

@@ -61,8 +61,10 @@ def load(source):
 - **Model resolution** — `resolve_weight_file`, `resolve_model_dir`,
   `configured_models_dir`, `list_safetensors`.
 - **MLX runtime** — `load_safetensors`, `aggressive_cleanup`,
-  `get_compiled_callable`, `mx_dtype`, `PRECISIONS`, `torch_image_to_mx`,
-  `mx_to_torch`, `torch_image_to_pil`, `AnyType` / `ANY_TYPE`.
+  `get_compiled_callable`, `clear_compiled_callables`, `mx_dtype`, `PRECISIONS`,
+  `torch_image_to_mx`, `mx_to_torch`, `torch_image_to_pil`, `AnyType` /
+  `ANY_TYPE`. Retain the compiled wrapper on the loaded component for
+  cross-prompt reuse, and clear it whenever that component's weights change.
 
 ## Versioning
 
