@@ -14,9 +14,10 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Sequence
 
 _SAFE_EXT = ".safetensors"
 _PROGRESS_WIDTH = 24
@@ -61,7 +62,9 @@ def _base_models_dir() -> Path:
 
 def _looks_like_model_dir(path: Path) -> bool:
     return path.is_dir() and (
-        (path / "config.json").exists() or any(path.glob(f"*{_SAFE_EXT}"))
+        (path / "config.json").exists()
+        or (path / "model_index.json").exists()
+        or any(path.glob(f"*{_SAFE_EXT}"))
     )
 
 
@@ -87,6 +90,16 @@ def _make_log_tqdm(status: Callable[[str], None], label: str):
     """
 
     class _LogTqdm:
+        _lock = threading.RLock()
+
+        @classmethod
+        def get_lock(cls):
+            return cls._lock
+
+        @classmethod
+        def set_lock(cls, lock) -> None:
+            cls._lock = lock
+
         def __init__(self, iterable=None, *args, **kwargs):
             del args
             self.iterable = iterable
@@ -195,6 +208,10 @@ def resolve_model_dir(
     *,
     subdir: str = "",
     status: Callable[[str], None] = print,
+    revision: str | None = None,
+    allow_patterns: str | Sequence[str] | None = None,
+    ignore_patterns: str | Sequence[str] | None = None,
+    force_download: bool = False,
 ) -> Path:
     """Resolve *source* to a local model directory, downloading from HF if needed.
 
@@ -212,7 +229,7 @@ def resolve_model_dir(
     base.mkdir(parents=True, exist_ok=True)
     local = base / source
 
-    if _looks_like_model_dir(local):
+    if _looks_like_model_dir(local) and not force_download:
         status(f"local model found at {local}")
         return local
 
@@ -222,9 +239,11 @@ def resolve_model_dir(
     downloaded = snapshot_download(
         repo_id=source,
         local_dir=local,
-        local_dir_use_symlinks=False,  # real files, no blob symlinks
         cache_dir=local / ".cache",
-        resume_download=True,
+        revision=revision,
+        allow_patterns=allow_patterns,
+        ignore_patterns=ignore_patterns,
+        force_download=force_download,
         tqdm_class=_make_log_tqdm(status, f"download {source}"),
     )
     status(f"download complete: {downloaded}")
@@ -237,6 +256,9 @@ def resolve_weight_file(
     subdir: str = "",
     hf_repo: str = "",
     status: Callable[[str], None] = print,
+    revision: str | None = None,
+    validator: Callable[[Path], bool] | None = None,
+    force_download: bool = False,
 ) -> Path:
     """Resolve *source* to a single weights file, downloading from HF if needed.
 
@@ -250,6 +272,8 @@ def resolve_weight_file(
     """
     path = Path(source).expanduser()
     if path.is_absolute() and path.is_file():
+        if validator is not None and not validator(path):
+            raise OSError(f"Local weights failed validation: {path}")
         return path
 
     if hf_repo and (source.endswith(_SAFE_EXT) or "/" not in source):
@@ -257,9 +281,12 @@ def resolve_weight_file(
         if subdir:
             base = base / subdir
         target = base / source
-        if target.is_file():
+        if target.is_file() and not force_download and (validator is None or validator(target)):
             status(f"local weights found at {target}")
             return target
+        if target.is_file() and validator is not None and not validator(target):
+            status(f"local weights failed validation; re-downloading {target}")
+            force_download = True
         base.mkdir(parents=True, exist_ok=True)
         status(f"downloading {source} from {hf_repo}")
         from huggingface_hub import hf_hub_download
@@ -268,17 +295,30 @@ def resolve_weight_file(
             hf_repo,
             source,
             local_dir=str(base),
+            revision=revision,
+            force_download=force_download,
             tqdm_class=_make_log_tqdm(status, f"download {source}"),
         )
+        downloaded_path = Path(downloaded)
+        if validator is not None and not validator(downloaded_path):
+            raise OSError(f"Downloaded weights failed validation: {downloaded_path}")
         status(f"download complete: {downloaded}")
-        return Path(downloaded)
+        return downloaded_path
 
-    model_dir = resolve_model_dir(source, subdir=subdir, status=status)
+    model_dir = resolve_model_dir(
+        source,
+        subdir=subdir,
+        status=status,
+        revision=revision,
+        force_download=force_download,
+    )
     if model_dir.is_file():
         return model_dir
     files = sorted(model_dir.glob(f"*{_SAFE_EXT}"))
     if not files:
         raise FileNotFoundError(f"No {_SAFE_EXT} file found in {model_dir}")
+    if validator is not None and not validator(files[0]):
+        raise OSError(f"Resolved weights failed validation: {files[0]}")
     return files[0]
 
 

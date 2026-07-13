@@ -59,7 +59,8 @@ def load(source):
   `.done()`, `.with_metadata()`. Also `resolve_version`, `with_mlx_metadata`,
   `LOGO`.
 - **Model resolution** — `resolve_weight_file`, `resolve_model_dir`,
-  `configured_models_dir`, `list_safetensors`.
+  `configured_models_dir`, and `list_safetensors`, including optional Hub
+  revisions/pattern filters and validation-driven re-downloads.
 - **MLX runtime** — `load_safetensors`, `aggressive_cleanup`,
   `get_compiled_callable`, `clear_compiled_callables`, `mx_dtype`, `PRECISIONS`,
   `torch_image_to_mx`, `mx_to_torch`, `torch_image_to_pil`, `AnyType` /
