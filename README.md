@@ -58,8 +58,9 @@ def load(source):
   `RepoMeta` with `.VERSION`, `.LOGO`, `.versioned(name)`, `.banner()`, `.log()`,
   `.done()`, `.with_metadata()`. Also `resolve_version`, `with_mlx_metadata`,
   `LOGO`.
-- **Model resolution** — `resolve_weight_file`, `resolve_model_dir`,
-  `configured_models_dir`, and `list_safetensors`, including optional Hub
+- **Model resolution/discovery** — `resolve_weight_file`, `resolve_model_dir`,
+  `configured_models_dir`, `discover_model_dirs`, `model_dropdown_choices`,
+  `resolve_choice_or_custom`, and `list_safetensors`, including optional Hub
   revisions/pattern filters and validation-driven re-downloads.
 - **MLX runtime** — `load_safetensors`, `aggressive_cleanup`,
   `get_compiled_callable`, `clear_compiled_callables`, `mx_dtype`, `PRECISIONS`,

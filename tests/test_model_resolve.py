@@ -6,7 +6,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from comfyui_mlx_helpers.model_resolve import resolve_model_dir, resolve_weight_file
+from comfyui_mlx_helpers.model_resolve import (
+    CUSTOM_MODEL_CHOICE,
+    discover_model_dirs,
+    model_dropdown_choices,
+    resolve_choice_or_custom,
+    resolve_model_dir,
+    resolve_weight_file,
+)
 
 
 class ModelResolveDownloadProgressTests(unittest.TestCase):
@@ -104,6 +111,44 @@ class ModelResolveDownloadProgressTests(unittest.TestCase):
 
         self.assertTrue(download.call_args.kwargs["force_download"])
         self.assertTrue(any("failed validation" in line for line in lines))
+
+    def test_discover_model_dirs_filters_marker_json_with_portable_ids(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            vlm = root / "mlx-community" / "gemma-3-12b-it-4bit"
+            text_encoder = root / "some-model" / "text_encoder"
+            ordinary = root / "ordinary" / "model"
+            vlm.mkdir(parents=True)
+            text_encoder.mkdir(parents=True)
+            ordinary.mkdir(parents=True)
+            (vlm / "config.json").write_text('{"vision_config": {}}')
+            (text_encoder / "config.json").write_text('{"vision_config": {}}')
+            (ordinary / "config.json").write_text('{"model_type": "llama"}')
+
+            found = discover_model_dirs(
+                marker_file="config.json",
+                patterns=("*/config.json", "*/*/config.json"),
+                predicate=lambda data: "vision_config" in data,
+                roots=[root],
+                exclude_parts=("text_encoder",),
+            )
+
+        self.assertEqual(found, ["mlx-community/gemma-3-12b-it-4bit"])
+
+    def test_model_dropdown_choices_dedupes_remote_and_keeps_custom_last(self):
+        choices, default = model_dropdown_choices(
+            ["local/vlm"],
+            ["local/vlm", "remote/vlm", "remote/gemma-3-12b-it-4bit"],
+            default_contains="gemma-3-12b",
+        )
+
+        self.assertEqual(choices, ["local/vlm", "remote/vlm", "remote/gemma-3-12b-it-4bit", CUSTOM_MODEL_CHOICE])
+        self.assertEqual(default, "remote/gemma-3-12b-it-4bit")
+
+    def test_resolve_choice_or_custom_prefers_custom_only_for_sentinel(self):
+        self.assertEqual(resolve_choice_or_custom("remote/vlm", "/tmp/local"), "remote/vlm")
+        self.assertEqual(resolve_choice_or_custom(CUSTOM_MODEL_CHOICE, "/tmp/local"), "/tmp/local")
+        self.assertEqual(resolve_choice_or_custom("", "/tmp/local"), "/tmp/local")
 
 
 if __name__ == "__main__":

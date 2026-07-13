@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Callable, Sequence
 
 _SAFE_EXT = ".safetensors"
+CUSTOM_MODEL_CHOICE = "custom — use custom_model_id"
 _PROGRESS_WIDTH = 24
 _PROGRESS_MIN_SECONDS = 2.0
 _PROGRESS_MIN_FRACTION = 0.05
@@ -58,6 +59,32 @@ def _base_models_dir() -> Path:
         return Path(folder_paths.models_dir)
     except Exception:
         return Path.cwd() / "models"
+
+
+def configured_model_roots() -> list[Path]:
+    """Candidate roots for local model discovery, ordered by runtime priority."""
+    roots: list[Path] = []
+    configured = configured_models_dir()
+    if configured:
+        roots.append(configured)
+    try:
+        import folder_paths  # provided by ComfyUI at runtime
+
+        roots.append(Path(folder_paths.models_dir))
+    except Exception:
+        pass
+
+    result: list[Path] = []
+    seen: set[str] = set()
+    for root in roots:
+        try:
+            key = str(root.expanduser().resolve())
+        except Exception:
+            key = str(root.expanduser())
+        if key not in seen:
+            result.append(root)
+            seen.add(key)
+    return result
 
 
 def _looks_like_model_dir(path: Path) -> bool:
@@ -326,3 +353,85 @@ def list_safetensors(directory) -> list[Path]:
     """Sorted ``*.safetensors`` files directly inside *directory*."""
     directory = Path(directory)
     return sorted(directory.glob(f"*{_SAFE_EXT}")) if directory.is_dir() else []
+
+
+def discover_model_dirs(
+    *,
+    marker_file: str,
+    patterns: Sequence[str],
+    predicate: Callable[[dict], bool],
+    roots: Sequence[Path] | None = None,
+    exclude_parts: Sequence[str] = (),
+) -> list[str]:
+    """Return portable model ids whose marker JSON matches *predicate*.
+
+    The helper intentionally knows nothing about VLM, Flux, Krea, or other model
+    families. Callers supply the marker filename, bounded glob patterns, and the
+    JSON predicate that defines compatibility for their own loader.
+    """
+    search_roots = list(roots) if roots is not None else configured_model_roots()
+    if not search_roots:
+        return []
+
+    ids: set[str] = set()
+    excluded = set(exclude_parts)
+    seen_markers: set[str] = set()
+    for root in search_roots:
+        root = Path(root).expanduser()
+        if not root.is_dir():
+            continue
+        for pattern in patterns:
+            for marker in root.glob(pattern):
+                if marker.name != marker_file or not marker.is_file():
+                    continue
+                if excluded.intersection(marker.parts):
+                    continue
+                try:
+                    key = str(marker.resolve())
+                except Exception:
+                    key = str(marker)
+                if key in seen_markers:
+                    continue
+                seen_markers.add(key)
+                try:
+                    data = json.loads(marker.read_text())
+                except Exception:
+                    continue
+                if not predicate(data):
+                    continue
+                try:
+                    ids.add(marker.parent.relative_to(root).as_posix())
+                except ValueError:
+                    ids.add(str(marker.parent))
+    return sorted(ids)
+
+
+def model_dropdown_choices(
+    local_choices: Sequence[str],
+    remote_choices: Sequence[str] = (),
+    *,
+    custom_choice: str = CUSTOM_MODEL_CHOICE,
+    default_contains: str | None = None,
+) -> tuple[list[str], str]:
+    """Merge discovered local ids, curated remotes, and a custom sentinel."""
+    local = list(dict.fromkeys(str(choice) for choice in local_choices if str(choice)))
+    localset = set(local)
+    remote = [str(choice) for choice in remote_choices if str(choice) and str(choice) not in localset]
+    choices = local + remote
+    if custom_choice not in choices:
+        choices.append(custom_choice)
+
+    default = choices[0]
+    if default_contains:
+        needle = default_contains.lower()
+        default = next((choice for choice in choices if needle in choice.lower()), default)
+    return choices, default
+
+
+def resolve_choice_or_custom(choice: str, custom_value: str, *, custom_choice: str = CUSTOM_MODEL_CHOICE) -> str:
+    """Resolve a dropdown choice plus a custom text field into one model id."""
+    selected = (choice or "").strip()
+    custom = (custom_value or "").strip()
+    if selected == custom_choice:
+        return custom
+    return selected or custom

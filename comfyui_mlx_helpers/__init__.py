@@ -13,8 +13,13 @@ from __future__ import annotations
 
 from . import model_resolve, node_meta
 from .model_resolve import (
+    CUSTOM_MODEL_CHOICE,
     configured_models_dir,
+    configured_model_roots,
+    discover_model_dirs,
     list_safetensors,
+    model_dropdown_choices,
+    resolve_choice_or_custom,
     resolve_model_dir,
     resolve_weight_file,
 )
@@ -85,7 +90,12 @@ __all__ = [
     "resolve_version",
     "with_mlx_metadata",
     # model resolution
+    "CUSTOM_MODEL_CHOICE",
     "configured_models_dir",
+    "configured_model_roots",
+    "discover_model_dirs",
+    "model_dropdown_choices",
+    "resolve_choice_or_custom",
     "resolve_model_dir",
     "resolve_weight_file",
     "list_safetensors",
