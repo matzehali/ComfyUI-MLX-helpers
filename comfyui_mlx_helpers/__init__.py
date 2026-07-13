@@ -11,7 +11,7 @@ version/logo/cleanup/model-resolution boilerplate::
 
 from __future__ import annotations
 
-from . import model_resolve, node_meta
+from . import model_resolve, node_meta, v3_nodes
 from .model_resolve import (
     CUSTOM_MODEL_CHOICE,
     configured_models_dir,
@@ -48,6 +48,7 @@ from .video_normalize import (
     next_multiple,
     normalize_video,
 )
+from .v3_nodes import adapt_v1_node, adapt_v1_nodes, v3_nodes_available
 
 __version__ = node_meta.VERSION
 
@@ -81,6 +82,7 @@ def install_node_colors(web_dir: str) -> None:
 __all__ = [
     "node_meta",
     "model_resolve",
+    "v3_nodes",
     "WEB_DIRECTORY",
     "install_node_colors",
     # naming / versioning
@@ -111,6 +113,10 @@ __all__ = [
     "torch_image_to_pil",
     "AnyType",
     "ANY_TYPE",
+    # ComfyUI V3 node migration
+    "adapt_v1_node",
+    "adapt_v1_nodes",
+    "v3_nodes_available",
     # video normalization (shared across MLX ports)
     "normalize_video",
     "next_multiple",
