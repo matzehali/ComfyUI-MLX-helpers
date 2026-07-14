@@ -58,10 +58,12 @@ def load(source):
   `RepoMeta` with `.VERSION`, `.LOGO`, `.versioned(name)`, `.banner()`, `.log()`,
   `.done()`, `.with_metadata()`. Also `resolve_version`, `with_mlx_metadata`,
   `LOGO`.
-- **Model resolution/discovery** — `resolve_weight_file`, `resolve_model_dir`,
-  `configured_models_dir`, `discover_model_dirs`, `model_dropdown_choices`,
-  `resolve_choice_or_custom`, and `list_safetensors`, including optional Hub
-  revisions/pattern filters and validation-driven re-downloads.
+- **Model resolution/discovery** — `resolve_weight_file`, `resolve_repo_file`,
+  `resolve_model_dir`, `configured_models_dir`, `discover_model_dirs`,
+  `model_dropdown_choices`, `resolve_choice_or_custom`, and `list_safetensors`,
+  including optional Hub revisions/pattern filters and validation-driven
+  re-downloads. `resolve_repo_file` also handles nested tokenizer/config files
+  and binds them to an already resolved local snapshot.
 - **MLX runtime** — `load_safetensors`, `aggressive_cleanup`,
   `get_compiled_callable`, `clear_compiled_callables`, `mx_dtype`, `PRECISIONS`,
   `torch_image_to_mx`, `mx_to_torch`, `torch_image_to_pil`, `AnyType` /
