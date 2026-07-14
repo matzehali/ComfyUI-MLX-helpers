@@ -58,15 +58,23 @@ def load(source):
   `RepoMeta` with `.VERSION`, `.LOGO`, `.versioned(name)`, `.banner()`, `.log()`,
   `.done()`, `.with_metadata()`. Also `resolve_version`, `with_mlx_metadata`,
   `LOGO`.
-- **Model resolution/discovery** — `resolve_weight_file`, `resolve_model_dir`,
-  `configured_models_dir`, `discover_model_dirs`, `model_dropdown_choices`,
-  `resolve_choice_or_custom`, and `list_safetensors`, including optional Hub
-  revisions/pattern filters and validation-driven re-downloads.
+- **Model resolution/discovery** — `resolve_weight_file`, `resolve_repo_file`,
+  `resolve_model_dir`, `configured_models_dir`, `discover_model_dirs`,
+  `model_dropdown_choices`, `resolve_choice_or_custom`, and `list_safetensors`,
+  including optional Hub revisions/pattern filters and validation-driven
+  re-downloads. `resolve_repo_file` also handles nested tokenizer/config files
+  and binds them to an already resolved local snapshot.
 - **MLX runtime** — `load_safetensors`, `aggressive_cleanup`,
   `get_compiled_callable`, `clear_compiled_callables`, `mx_dtype`, `PRECISIONS`,
   `torch_image_to_mx`, `mx_to_torch`, `torch_image_to_pil`, `AnyType` /
   `ANY_TYPE`. Retain the compiled wrapper on the loaded component for
   cross-prompt reuse, and clear it whenever that component's weights change.
+- **ComfyUI V3 migration** — `adapt_v1_node` / `adapt_v1_nodes` produce genuine
+  schema-backed V3 classes while retaining serialized node IDs, socket order,
+  implementation math, and the V1 mapping fallback used by mixed node packs.
+  The wrapped nodes must be stateless; resident models and compiled callables
+  stay on loader outputs/components. `v3_nodes_available()` allows a pack to
+  retain its previous registration shim on older ComfyUI builds.
 
 ## Versioning
 

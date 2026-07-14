@@ -62,12 +62,43 @@ def _find_git_dir(start: Path) -> Path | None:
     return None
 
 
+def _common_git_dir(git_dir: Path) -> Path:
+    """Return the shared Git directory for a linked worktree."""
+
+    common = _read_text(git_dir / "commondir")
+    if not common:
+        return git_dir
+    path = Path(common)
+    return path if path.is_absolute() else (git_dir / path).resolve()
+
+
+def _packed_ref(git_dir: Path, ref_name: str) -> str | None:
+    packed = _read_text(_common_git_dir(git_dir) / "packed-refs")
+    if not packed:
+        return None
+    for line in packed.splitlines():
+        if not line or line.startswith(("#", "^")):
+            continue
+        try:
+            sha, ref = line.split(" ", 1)
+        except ValueError:
+            continue
+        if ref == ref_name:
+            return sha
+    return None
+
+
 def _head_commit(git_dir: Path) -> str | None:
     head = _read_text(git_dir / "HEAD")
     if not head:
         return None
     if head.startswith("ref:"):
-        return _read_text(git_dir / head.split(":", 1)[1].strip())
+        ref_name = head.split(":", 1)[1].strip()
+        return (
+            _read_text(git_dir / ref_name)
+            or _read_text(_common_git_dir(git_dir) / ref_name)
+            or _packed_ref(git_dir, ref_name)
+        )
     return head
 
 
@@ -93,6 +124,7 @@ def _deref_tag_object(git_dir: Path, sha: str) -> str:
 
 
 def _tag_commits(git_dir: Path) -> dict[str, str]:
+    git_dir = _common_git_dir(git_dir)
     tags: dict[str, str] = {}
     refs_dir = git_dir / "refs" / "tags"
     if refs_dir.is_dir():
