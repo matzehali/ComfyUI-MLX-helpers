@@ -21,6 +21,7 @@ from .model_resolve import (
     model_dropdown_choices,
     resolve_choice_or_custom,
     resolve_model_dir,
+    resolve_repo_file,
     resolve_weight_file,
 )
 from .mlx_runtime import (
@@ -99,6 +100,7 @@ __all__ = [
     "model_dropdown_choices",
     "resolve_choice_or_custom",
     "resolve_model_dir",
+    "resolve_repo_file",
     "resolve_weight_file",
     "list_safetensors",
     # mlx runtime

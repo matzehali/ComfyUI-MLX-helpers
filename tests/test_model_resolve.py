@@ -12,6 +12,7 @@ from comfyui_mlx_helpers.model_resolve import (
     model_dropdown_choices,
     resolve_choice_or_custom,
     resolve_model_dir,
+    resolve_repo_file,
     resolve_weight_file,
 )
 
@@ -111,6 +112,51 @@ class ModelResolveDownloadProgressTests(unittest.TestCase):
 
         self.assertTrue(download.call_args.kwargs["force_download"])
         self.assertTrue(any("failed validation" in line for line in lines))
+
+    def test_repo_file_preserves_nested_layout_and_reuses_local_copy(self):
+        calls = []
+
+        def fake_hf_hub_download(repo_id, filename, **kwargs):
+            calls.append((repo_id, filename, kwargs))
+            target = Path(kwargs["local_dir"]) / filename
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("{}")
+            return str(target)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.dict("os.environ", {"COMFYUI_MODELS_DIR": tmpdir}, clear=False):
+                with patch("huggingface_hub.hf_hub_download", side_effect=fake_hf_hub_download):
+                    first = resolve_repo_file(
+                        "org/model",
+                        "tokenizer/config.json",
+                        status=lambda _line: None,
+                    )
+                    second = resolve_repo_file(
+                        "org/model",
+                        "tokenizer/config.json",
+                        status=lambda _line: None,
+                    )
+
+        self.assertEqual(first, second)
+        self.assertEqual(first.relative_to(tmpdir).as_posix(), "org/model/tokenizer/config.json")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][:2], ("org/model", "tokenizer/config.json"))
+
+    def test_repo_file_can_bind_canonical_id_to_resolved_snapshot(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo = Path(tmpdir) / "custom-snapshot"
+            target = repo / "weights" / "model.bin"
+            target.parent.mkdir(parents=True)
+            target.write_bytes(b"model")
+            with patch("huggingface_hub.hf_hub_download") as download:
+                resolved = resolve_repo_file(
+                    "canonical/repo",
+                    "weights/model.bin",
+                    local_repo_dir=repo,
+                )
+
+        self.assertEqual(resolved, target)
+        download.assert_not_called()
 
     def test_discover_model_dirs_filters_marker_json_with_portable_ids(self):
         with tempfile.TemporaryDirectory() as tmpdir:

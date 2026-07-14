@@ -349,6 +349,74 @@ def resolve_weight_file(
     return files[0]
 
 
+def resolve_repo_file(
+    hf_repo: str,
+    filename: str,
+    *,
+    subdir: str = "",
+    local_repo_dir: str | Path | None = None,
+    status: Callable[[str], None] = print,
+    revision: str | None = None,
+    validator: Callable[[Path], bool] | None = None,
+    force_download: bool = False,
+) -> Path:
+    """Resolve one arbitrary file from a Hugging Face repository.
+
+    Unlike :func:`resolve_weight_file`, *filename* may be a nested JSON,
+    tokenizer, or other non-safetensors asset. Files retain their repository
+    layout below ``<models>/<subdir>/<org>/<repo>`` so upstream libraries can
+    consume a normal local snapshot while still honoring the shared model root.
+    ``local_repo_dir`` lets a caller reuse an already-resolved snapshot for a
+    canonical upstream repo id.
+    """
+
+    if not hf_repo or not filename:
+        raise ValueError("hf_repo and filename must be non-empty")
+
+    if local_repo_dir is not None:
+        repo_dir = Path(local_repo_dir).expanduser()
+    else:
+        source_path = Path(hf_repo).expanduser()
+        if source_path.is_absolute() and source_path.is_dir():
+            repo_dir = source_path
+        else:
+            repo_dir = _base_models_dir()
+            if subdir:
+                repo_dir = repo_dir / subdir
+            repo_dir = repo_dir / hf_repo
+
+    target = repo_dir / filename
+    if target.is_file() and not force_download and (validator is None or validator(target)):
+        status(f"local repo file found at {target}")
+        return target
+    if target.is_file() and validator is not None and not validator(target):
+        status(f"local repo file failed validation; re-downloading {target}")
+        force_download = True
+
+    source_path = Path(hf_repo).expanduser()
+    if source_path.is_absolute() and source_path.is_dir():
+        raise FileNotFoundError(f"Missing {filename} in local repository {source_path}")
+
+    repo_dir.mkdir(parents=True, exist_ok=True)
+    status(f"downloading {filename} from {hf_repo}")
+    from huggingface_hub import hf_hub_download
+
+    downloaded = Path(
+        hf_hub_download(
+            hf_repo,
+            filename,
+            local_dir=str(repo_dir),
+            revision=revision,
+            force_download=force_download,
+            tqdm_class=_make_log_tqdm(status, f"download {filename}"),
+        )
+    )
+    if validator is not None and not validator(downloaded):
+        raise OSError(f"Downloaded repository file failed validation: {downloaded}")
+    status(f"download complete: {downloaded}")
+    return downloaded
+
+
 def list_safetensors(directory) -> list[Path]:
     """Sorted ``*.safetensors`` files directly inside *directory*."""
     directory = Path(directory)
