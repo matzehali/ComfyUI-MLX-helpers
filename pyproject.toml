@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "comfyui-mlx-helpers"
-version = "0.13.0"
+version = "0.14.0"
 description = "Shared infrastructure library for the ComfyUI MLX port projects (Apple Silicon)."
 license = { text = "Apache-2.0" }
 requires-python = ">=3.11"

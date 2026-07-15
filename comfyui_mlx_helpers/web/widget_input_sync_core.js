@@ -10,6 +10,28 @@ export function resolvedOutputValues(payload) {
     return Array.isArray(values) ? values.map(firstValue) : null;
 }
 
+/**
+ * Remember an authoritative scalar value for one graph output slot.
+ *
+ * A computed upstream node (for example ComfyUI's Math Expression node) has
+ * no widget whose value can be inspected by downstream nodes.  Once any
+ * consumer executes, however, its resolved input is the authoritative value
+ * produced by that output.  Caching it on the source node lets every sibling
+ * consumer display the same value, including consumers that were not part of
+ * the executed output branch.
+ */
+export function cacheResolvedOutputValue(source, outputSlot, value) {
+    if (!source || !Number.isInteger(outputSlot) || outputSlot < 0) return false;
+    const resolved = Array.isArray(source.__mlxResolvedOutputs)
+        ? [...source.__mlxResolvedOutputs]
+        : [];
+    const scalar = firstValue(value);
+    if (Object.is(resolved[outputSlot], scalar)) return false;
+    resolved[outputSlot] = scalar;
+    source.__mlxResolvedOutputs = resolved;
+    return true;
+}
+
 export function preferredLinkedValue(hasLiveValue, liveValue, resolvedValue) {
     if (hasLiveValue) return { hasValue: true, value: liveValue };
     if (resolvedValue !== undefined && resolvedValue !== null) {

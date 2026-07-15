@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js";
 import {
+    cacheResolvedOutputValue,
     createWidgetInputSync,
     firstValue,
     preferredLinkedValue,
@@ -71,6 +72,15 @@ function liveLinkedValue(node, name) {
         ? resolvedOutputs[link.origin_slot]
         : undefined;
     return preferredLinkedValue(Boolean(widget), widget?.value, resolvedValue);
+}
+
+function cacheLinkedResolvedInputs(node, resolvedInputs) {
+    if (!resolvedInputs || typeof resolvedInputs !== "object") return;
+    for (const [name, value] of Object.entries(resolvedInputs)) {
+        const linked = linkedSource(node, name);
+        if (!linked) continue;
+        cacheResolvedOutputValue(linked.source, linked.link.origin_slot, value);
+    }
 }
 
 function refreshNode(node, resolvedInputs = null) {
@@ -146,7 +156,9 @@ if (PACK) {
                 const resolvedOutputs = resolvedOutputValues(message?.mlx_resolved_outputs);
                 if (resolvedOutputs) this.__mlxResolvedOutputs = resolvedOutputs;
                 const resolved = message?.mlx_resolved_inputs?.[0];
-                refreshNode(this, resolved && typeof resolved === "object" ? resolved : null);
+                const resolvedInputs = resolved && typeof resolved === "object" ? resolved : null;
+                cacheLinkedResolvedInputs(this, resolvedInputs);
+                refreshNode(this, resolvedInputs);
                 return result;
             };
 

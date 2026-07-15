@@ -2,12 +2,30 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+    cacheResolvedOutputValue,
     createWidgetInputSync,
     firstValue,
     normalizeWidgetValue,
     preferredLinkedValue,
     resolvedOutputValues,
 } from "../comfyui_mlx_helpers/web/widget_input_sync_core.js";
+
+test("authoritative consumer inputs are cached on computed source slots", () => {
+    const source = {};
+
+    assert.equal(cacheResolvedOutputValue(source, 1, [73]), true);
+    assert.equal(source.__mlxResolvedOutputs.length, 2);
+    assert.equal(source.__mlxResolvedOutputs[0], undefined);
+    assert.equal(source.__mlxResolvedOutputs[1], 73);
+    assert.equal(cacheResolvedOutputValue(source, 1, [[73]]), false);
+    assert.deepEqual(
+        preferredLinkedValue(false, undefined, source.__mlxResolvedOutputs[1]),
+        { hasValue: true, value: 73 },
+    );
+
+    assert.equal(cacheResolvedOutputValue(source, 0, [1248]), true);
+    assert.deepEqual(source.__mlxResolvedOutputs, [1248, 73]);
+});
 
 
 test("firstValue unwraps Comfy UI payload lists", () => {
