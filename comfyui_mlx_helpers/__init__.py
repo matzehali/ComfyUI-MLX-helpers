@@ -80,12 +80,28 @@ def install_node_colors(web_dir: str) -> None:
         pass
 
 
+def install_widget_input_sync(web_dir: str) -> None:
+    """Copy the shared live widget/input sync extension into a pack web dir."""
+    import shutil
+
+    try:
+        _os.makedirs(web_dir, exist_ok=True)
+        for filename in ("mlx_widget_input_sync.js", "widget_input_sync_core.js"):
+            shutil.copyfile(
+                _os.path.join(WEB_DIRECTORY, filename),
+                _os.path.join(web_dir, filename),
+            )
+    except Exception:
+        pass
+
+
 __all__ = [
     "node_meta",
     "model_resolve",
     "v3_nodes",
     "WEB_DIRECTORY",
     "install_node_colors",
+    "install_widget_input_sync",
     # naming / versioning
     "LOGO",
     "RepoMeta",

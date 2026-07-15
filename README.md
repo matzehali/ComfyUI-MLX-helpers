@@ -74,7 +74,26 @@ def load(source):
   implementation math, and the V1 mapping fallback used by mixed node packs.
   The wrapped nodes must be stateless; resident models and compiled callables
   stay on loader outputs/components. `v3_nodes_available()` allows a pack to
-  retain its previous registration shim on older ComfyUI builds.
+  retain its previous registration shim on older ComfyUI builds. Pass
+  `sync_widget_inputs=True` to emit authoritative scalar input and output
+  values as intermediate UI data for the connected-widget display helper.
+- **Live connected-widget display** — the shared web extension keeps a widget's
+  saved value as its disconnected fallback while displaying the effective
+  upstream value whenever its input is linked. Primitive upstream edits refresh
+  live; execution supplies authoritative values for computed links and caches
+  scalar source outputs by socket. Disconnecting restores the saved fallback.
+  Packs using the helper `WEB_DIRECTORY` receive it automatically; packs with
+  their own web directory call
+  `install_widget_input_sync(web_dir)`.
+
+For a pack that already owns its web directory:
+
+```python
+from comfyui_mlx_helpers import install_node_colors, install_widget_input_sync
+
+install_node_colors(WEB_DIR)
+install_widget_input_sync(WEB_DIR)
+```
 
 ## Versioning
 

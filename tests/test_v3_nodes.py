@@ -46,6 +46,19 @@ class _LegacyListNode:
         return (sum(values),)
 
 
+class _LegacyScalarNode:
+    CATEGORY = "MLX/Test"
+    FUNCTION = "run"
+    RETURN_TYPES = ("STRING", "INT", "IMAGE")
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"text": ("STRING", {"default": ""})}}
+
+    def run(self, text):
+        return (text, len(text), "image-placeholder")
+
+
 @unittest.skipUnless(v3_nodes_available(), "ComfyUI V3 API is not importable")
 class V3NodeAdapterTests(unittest.TestCase):
     def test_schema_keeps_serialized_contract_and_v3_identity(self):
@@ -79,11 +92,17 @@ class V3NodeAdapterTests(unittest.TestCase):
             output.ui["mlx_resolved_inputs"],
             [{"count": [3], "mode": ["fast"]}],
         )
+        self.assertEqual(output.ui["mlx_resolved_outputs"], [[None, None]])
 
     def test_input_is_list_is_kept(self):
         node = adapt_v1_node("ListMLXNode", _LegacyListNode)
         self.assertTrue(node.INPUT_IS_LIST)
         self.assertEqual(node.execute(values=[1, 2, 3]).result, (6,))
+
+    def test_scalar_outputs_are_available_to_downstream_widget_sync(self):
+        node = adapt_v1_node("ScalarMLXNode", _LegacyScalarNode, sync_widget_inputs=True)
+        output = node.execute(text="hello")
+        self.assertEqual(output.ui["mlx_resolved_outputs"], [["hello", 5, None]])
 
     def test_mapping_keeps_ids_and_old_comfy_fallback_shape(self):
         result = adapt_v1_nodes(

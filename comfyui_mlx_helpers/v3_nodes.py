@@ -8,8 +8,8 @@ also rewriting unrelated bundled V1 nodes.  The adapters produced here:
 * retain the serialized node IDs and input/output ordering used by workflows;
 * describe the node through :class:`comfy_api.latest.io.Schema`;
 * delegate execution to the existing, already-tested implementation; and
-* carry resolved widget values as intermediate UI output without turning every
-  compute node into an output node.
+* carry resolved scalar inputs and outputs as intermediate UI data without
+  turning every compute node into an output node.
 
 The wrapped implementation must be stateless between calls.  Persistent MLX
 state belongs on loader outputs/model components (as required by the shared
@@ -190,7 +190,25 @@ def _hidden_kwargs(adapter_class: type, legacy_class: type) -> dict[str, Any]:
     return values
 
 
-def _as_node_output(io, output: Any, resolved_inputs: Mapping[str, Any]):
+def _resolved_widget_outputs(legacy_class: type, values: tuple[Any, ...]) -> list[Any]:
+    output_types = getattr(legacy_class, "RETURN_TYPES", ()) or ()
+    list_flags = getattr(legacy_class, "OUTPUT_IS_LIST", ()) or ()
+    resolved = []
+    for index, output_type in enumerate(output_types):
+        is_list = bool(list_flags[index]) if index < len(list_flags) else False
+        if index >= len(values) or is_list or _type_name(output_type) not in _WIDGET_INPUT_TYPES:
+            resolved.append(None)
+        else:
+            resolved.append(_json_safe_widget_value(values[index]))
+    return resolved
+
+
+def _as_node_output(
+    io,
+    output: Any,
+    resolved_inputs: Mapping[str, Any],
+    legacy_class: type,
+):
     if isinstance(output, io.NodeOutput):
         node_output = output
     elif output is None:
@@ -208,6 +226,9 @@ def _as_node_output(io, output: Any, resolved_inputs: Mapping[str, Any]):
         return node_output
     ui_payload = dict(node_output.ui or {})
     ui_payload["mlx_resolved_inputs"] = [dict(resolved_inputs)]
+    ui_payload["mlx_resolved_outputs"] = [
+        _resolved_widget_outputs(legacy_class, node_output.args)
+    ]
     return io.NodeOutput(
         *node_output.args,
         ui=ui_payload,
@@ -275,7 +296,7 @@ def adapt_v1_node(
                     for name in _widget_input_names(legacy_class)
                     if name in kwargs
                 }
-            return _as_node_output(io, output, resolved)
+            return _as_node_output(io, output, resolved, legacy_class)
     else:
         def execute(cls, **kwargs):
             output, resolved = _execute_legacy(
@@ -284,7 +305,7 @@ def adapt_v1_node(
                 kwargs,
                 sync_widget_inputs=sync_widget_inputs,
             )
-            return _as_node_output(io, output, resolved)
+            return _as_node_output(io, output, resolved, legacy_class)
 
     class_name = re.sub(r"\W+", "_", f"{node_id}V3")
     attributes = {
