@@ -11,7 +11,7 @@ version/logo/cleanup/model-resolution boilerplate::
 
 from __future__ import annotations
 
-from . import model_resolve, node_meta, v3_nodes
+from . import model_resolve, node_meta, v3_nodes, vlm_models
 from .model_resolve import (
     CUSTOM_MODEL_CHOICE,
     configured_models_dir,
@@ -50,6 +50,7 @@ from .video_normalize import (
     normalize_video,
 )
 from .v3_nodes import adapt_v1_node, adapt_v1_nodes, v3_nodes_available
+from .vlm_models import discover_vlm_models, is_vlm_config, resolve_vlm_choice, vlm_model_dropdown
 
 __version__ = node_meta.VERSION
 
@@ -99,6 +100,7 @@ __all__ = [
     "node_meta",
     "model_resolve",
     "v3_nodes",
+    "vlm_models",
     "WEB_DIRECTORY",
     "install_node_colors",
     "install_widget_input_sync",
@@ -119,6 +121,10 @@ __all__ = [
     "resolve_repo_file",
     "resolve_weight_file",
     "list_safetensors",
+    "discover_vlm_models",
+    "is_vlm_config",
+    "resolve_vlm_choice",
+    "vlm_model_dropdown",
     # mlx runtime
     "PRECISIONS",
     "mx_dtype",

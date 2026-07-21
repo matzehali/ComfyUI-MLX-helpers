@@ -64,6 +64,10 @@ def load(source):
   including optional Hub revisions/pattern filters and validation-driven
   re-downloads. `resolve_repo_file` also handles nested tokenizer/config files
   and binds them to an already resolved local snapshot.
+- **VLM model selectors** — `discover_vlm_models`, `vlm_model_dropdown`, and
+  `resolve_vlm_choice` provide one compatible, local-first selector shared by
+  VLM-MLX and nodes which embed VLM analysis. Model loading remains in the
+  consumer so the helper stays architecture-neutral.
 - **MLX runtime** — `load_safetensors`, `aggressive_cleanup`,
   `get_compiled_callable`, `clear_compiled_callables`, `mx_dtype`, `PRECISIONS`,
   `torch_image_to_mx`, `mx_to_torch`, `torch_image_to_pil`, `AnyType` /
