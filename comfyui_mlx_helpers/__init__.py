@@ -45,7 +45,9 @@ from .node_meta import (
     with_mlx_metadata,
 )
 from .output_tracing import (
+    PARTIAL_EXECUTION_TARGETS_INPUT,
     mark_traced_inputs_lazy,
+    parse_partial_execution_targets,
     requested_outputs_for_node,
     required_inputs_for_node,
     trace_requested_outputs,
@@ -89,12 +91,35 @@ def install_node_colors(web_dir: str) -> None:
 
 
 def install_widget_input_sync(web_dir: str) -> None:
-    """Copy the shared live widget/input sync extension into a pack web dir."""
+    """Copy live widget sync plus output-tracing transport into a pack web dir."""
     import shutil
 
     try:
         _os.makedirs(web_dir, exist_ok=True)
-        for filename in ("mlx_widget_input_sync.js", "widget_input_sync_core.js"):
+        for filename in (
+            "mlx_widget_input_sync.js",
+            "widget_input_sync_core.js",
+            "mlx_partial_execution_targets.js",
+            "partial_execution_targets_core.js",
+        ):
+            shutil.copyfile(
+                _os.path.join(WEB_DIRECTORY, filename),
+                _os.path.join(web_dir, filename),
+            )
+    except Exception:
+        pass
+
+
+def install_output_tracing(web_dir: str) -> None:
+    """Copy the partial-execution target transport into a pack web dir."""
+    import shutil
+
+    try:
+        _os.makedirs(web_dir, exist_ok=True)
+        for filename in (
+            "mlx_partial_execution_targets.js",
+            "partial_execution_targets_core.js",
+        ):
             shutil.copyfile(
                 _os.path.join(WEB_DIRECTORY, filename),
                 _os.path.join(web_dir, filename),
@@ -112,6 +137,7 @@ __all__ = [
     "WEB_DIRECTORY",
     "install_node_colors",
     "install_widget_input_sync",
+    "install_output_tracing",
     # naming / versioning
     "LOGO",
     "RepoMeta",
@@ -150,7 +176,9 @@ __all__ = [
     "adapt_v1_nodes",
     "v3_nodes_available",
     # output-aware lazy execution
+    "PARTIAL_EXECUTION_TARGETS_INPUT",
     "mark_traced_inputs_lazy",
+    "parse_partial_execution_targets",
     "requested_outputs_for_node",
     "required_inputs_for_node",
     "trace_requested_outputs",

@@ -15,10 +15,37 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
+import json
 from typing import Any
 
 
 OutputDependencies = Mapping[int, Sequence[str]]
+PARTIAL_EXECUTION_TARGETS_INPUT = "_mlx_partial_execution_targets"
+
+
+def parse_partial_execution_targets(value: Any) -> tuple[Any, ...] | None:
+    """Decode the frontend-provided partial execution roots.
+
+    ``None`` means that no partial-execution information reached the backend,
+    so callers must keep the conservative all-output-roots fallback.  Invalid
+    payloads fail the same safe way rather than pruning execution accidentally.
+    """
+
+    if value is None:
+        return None
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except (TypeError, ValueError):
+            return None
+    if not isinstance(value, (list, tuple)):
+        return None
+    if any(
+        not isinstance(item, (str, int)) or isinstance(item, bool)
+        for item in value
+    ):
+        return None
+    return tuple(value)
 
 
 def _prompt_node(prompt: Mapping[Any, Any], node_id: Any) -> tuple[Any, Mapping[str, Any]] | None:
@@ -149,9 +176,9 @@ def trace_requested_outputs(
 ) -> dict[Any, frozenset[int]]:
     """Trace output sockets required by the prompt's executable output paths.
 
-    ``output_node_ids`` can narrow the roots when a caller knows ComfyUI's
-    partial-execution targets.  Normal node hooks do not currently receive that
-    list, so the safe default is every registered ``OUTPUT_NODE`` in the prompt.
+    ``output_node_ids`` narrows the roots when the shared frontend transport has
+    forwarded ComfyUI's partial-execution targets.  The safe fallback remains
+    every registered ``OUTPUT_NODE`` in the prompt.
     """
 
     mappings = _class_mappings(class_mappings)

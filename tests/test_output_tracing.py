@@ -4,6 +4,7 @@ import unittest
 
 from comfyui_mlx_helpers.output_tracing import (
     mark_traced_inputs_lazy,
+    parse_partial_execution_targets,
     required_inputs_for_node,
     trace_requested_outputs,
     validate_output_dependencies,
@@ -72,6 +73,14 @@ MAPPINGS = {
 
 
 class OutputTracingTests(unittest.TestCase):
+    def test_partial_execution_targets_are_decoded_conservatively(self):
+        self.assertEqual(parse_partial_execution_targets('["preview", 12]'), ("preview", 12))
+        self.assertEqual(parse_partial_execution_targets([]), ())
+        self.assertIsNone(parse_partial_execution_targets(None))
+        self.assertIsNone(parse_partial_execution_targets("not json"))
+        self.assertIsNone(parse_partial_execution_targets('{"preview": true}'))
+        self.assertIsNone(parse_partial_execution_targets('["preview", null]'))
+
     def test_metadata_output_prunes_unrelated_image_branch(self):
         prompt = {
             "image": {"class_type": "ImageSource", "inputs": {}},
@@ -114,6 +123,40 @@ class OutputTracingTests(unittest.TestCase):
         self.assertEqual(traced["sidecar"], frozenset({0}))
         self.assertEqual(traced["image"], frozenset({0}))
         self.assertEqual(traced["path"], frozenset({0}))
+
+    def test_partial_preview_ignores_other_output_roots_in_submitted_prompt(self):
+        prompt = {
+            "image": {"class_type": "ImageSource", "inputs": {}},
+            "path": {"class_type": "PathSource", "inputs": {}},
+            "sidecar": {
+                "class_type": "TracedPassThrough",
+                "inputs": {"images": ["image", 0], "full_path": ["path", 0]},
+            },
+            "preview": {"class_type": "Preview", "inputs": {"value": ["sidecar", 3]}},
+            "saver": {"class_type": "Preview", "inputs": {"value": ["sidecar", 0]}},
+        }
+
+        conservative = trace_requested_outputs(prompt, class_mappings=MAPPINGS)
+        preview_only = trace_requested_outputs(
+            prompt,
+            class_mappings=MAPPINGS,
+            output_node_ids=parse_partial_execution_targets('["preview"]'),
+        )
+
+        self.assertEqual(conservative["sidecar"], frozenset({0, 3}))
+        self.assertIn("image", conservative)
+        self.assertEqual(preview_only["sidecar"], frozenset({3}))
+        self.assertNotIn("image", preview_only)
+        self.assertEqual(
+            required_inputs_for_node(
+                prompt,
+                "sidecar",
+                _TracedPassThrough,
+                class_mappings=MAPPINGS,
+                output_node_ids=parse_partial_execution_targets('["preview"]'),
+            ),
+            ["full_path"],
+        )
 
     def test_unknown_nodes_conservatively_trace_every_input(self):
         prompt = {
