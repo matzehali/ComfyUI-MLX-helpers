@@ -5,6 +5,7 @@ import unittest
 from comfyui_mlx_helpers.output_tracing import (
     mark_traced_inputs_lazy,
     parse_partial_execution_targets,
+    partial_execution_targets_from_extra_pnginfo,
     required_inputs_for_node,
     trace_requested_outputs,
     validate_output_dependencies,
@@ -80,6 +81,15 @@ class OutputTracingTests(unittest.TestCase):
         self.assertIsNone(parse_partial_execution_targets("not json"))
         self.assertIsNone(parse_partial_execution_targets('{"preview": true}'))
         self.assertIsNone(parse_partial_execution_targets('["preview", null]'))
+        self.assertEqual(
+            partial_execution_targets_from_extra_pnginfo({
+                "workflow": {
+                    "extra": {"_mlx_partial_execution_targets": '["preview", 12]'}
+                }
+            }),
+            ("preview", 12),
+        )
+        self.assertIsNone(partial_execution_targets_from_extra_pnginfo({"workflow": {}}))
 
     def test_metadata_output_prunes_unrelated_image_branch(self):
         prompt = {

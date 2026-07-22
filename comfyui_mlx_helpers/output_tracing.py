@@ -48,6 +48,25 @@ def parse_partial_execution_targets(value: Any) -> tuple[Any, ...] | None:
     return tuple(value)
 
 
+def partial_execution_targets_from_extra_pnginfo(value: Any) -> tuple[Any, ...] | None:
+    """Read partial roots transported through V3's supported workflow metadata.
+
+    ComfyUI V3 only permits its enumerated hidden inputs.  Custom V1 hidden
+    strings therefore travel inside ``EXTRA_PNGINFO.workflow.extra`` while V1
+    nodes keep accepting the direct prompt annotation for compatibility.
+    """
+
+    if not isinstance(value, Mapping):
+        return None
+    workflow = value.get("workflow")
+    if not isinstance(workflow, Mapping):
+        return None
+    extra = workflow.get("extra")
+    if not isinstance(extra, Mapping):
+        return None
+    return parse_partial_execution_targets(extra.get(PARTIAL_EXECUTION_TARGETS_INPUT))
+
+
 def _prompt_node(prompt: Mapping[Any, Any], node_id: Any) -> tuple[Any, Mapping[str, Any]] | None:
     if node_id in prompt:
         return node_id, prompt[node_id]

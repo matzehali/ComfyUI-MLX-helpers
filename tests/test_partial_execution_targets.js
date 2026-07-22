@@ -5,6 +5,7 @@ import {
     PARTIAL_EXECUTION_TARGETS_INPUT,
     acceptsPartialExecutionTargets,
     annotatePartialExecutionTargets,
+    annotatePartialExecutionTargetsWorkflow,
     belongsToExtensionPack,
     installPartialExecutionTargetTransport,
 } from "../comfyui_mlx_helpers/web/partial_execution_targets_core.js";
@@ -64,6 +65,18 @@ test("queue transport forwards targets and preserves the original API call", asy
         request.output.sidecar.inputs[PARTIAL_EXECUTION_TARGETS_INPUT],
         '["preview"]',
     );
+    assert.equal(
+        request.workflow.extra[PARTIAL_EXECUTION_TARGETS_INPUT],
+        '["preview"]',
+    );
+});
+
+test("workflow metadata transports roots for V3 hidden inputs", () => {
+    const workflow = {};
+    assert.equal(annotatePartialExecutionTargetsWorkflow(workflow, ["preview"]), 1);
+    assert.equal(workflow.extra[PARTIAL_EXECUTION_TARGETS_INPUT], '["preview"]');
+    assert.equal(annotatePartialExecutionTargetsWorkflow(workflow, undefined), 1);
+    assert.equal(Object.hasOwn(workflow.extra, PARTIAL_EXECUTION_TARGETS_INPUT), false);
 });
 
 test("full execution removes a stale partial-target annotation", () => {

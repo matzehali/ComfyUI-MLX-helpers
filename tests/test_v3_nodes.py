@@ -4,6 +4,7 @@ import unittest
 from types import SimpleNamespace
 
 from comfyui_mlx_helpers.v3_nodes import adapt_v1_node, adapt_v1_nodes, v3_nodes_available
+from comfyui_mlx_helpers.output_tracing import PARTIAL_EXECUTION_TARGETS_INPUT
 
 
 class _LegacyNode:
@@ -104,6 +105,29 @@ class _LegacyLazyNode:
         return (value,)
 
 
+class _LegacyPartialTargetNode:
+    CATEGORY = "MLX/Test"
+    FUNCTION = "run"
+    RETURN_TYPES = ("STRING",)
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {"value": ("STRING", {"lazy": True})},
+            "hidden": {
+                "prompt_data": "PROMPT",
+                "unique_id": "UNIQUE_ID",
+                PARTIAL_EXECUTION_TARGETS_INPUT: "STRING",
+            },
+        }
+
+    def check_lazy_status(self, _mlx_partial_execution_targets=None, **kwargs):
+        return list(_mlx_partial_execution_targets or ())
+
+    def run(self, value, **kwargs):
+        return (value,)
+
+
 @unittest.skipUnless(v3_nodes_available(), "ComfyUI V3 API is not importable")
 class V3NodeAdapterTests(unittest.TestCase):
     def test_schema_keeps_serialized_contract_and_v3_identity(self):
@@ -163,6 +187,23 @@ class V3NodeAdapterTests(unittest.TestCase):
             unique_id="lazy-7",
         )
         self.assertEqual(node.check_lazy_status(value=None), ["value"])
+
+    def test_partial_targets_use_supported_v3_workflow_metadata(self):
+        from comfy_api.latest import io
+
+        node = adapt_v1_node("PartialTargetMLXNode", _LegacyPartialTargetNode)
+        schema = node.GET_SCHEMA()
+        self.assertIn(io.Hidden.extra_pnginfo, schema.hidden)
+        node.hidden = SimpleNamespace(
+            prompt={"node": "partial-1"},
+            unique_id="partial-1",
+            extra_pnginfo={
+                "workflow": {
+                    "extra": {PARTIAL_EXECUTION_TARGETS_INPUT: '["preview"]'}
+                }
+            },
+        )
+        self.assertEqual(node.check_lazy_status(value=None), ["preview"])
 
     def test_mapping_keeps_ids_and_old_comfy_fallback_shape(self):
         result = adapt_v1_nodes(

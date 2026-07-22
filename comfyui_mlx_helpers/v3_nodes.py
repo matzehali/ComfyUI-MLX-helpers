@@ -25,6 +25,11 @@ from collections.abc import Mapping
 from functools import cache
 from typing import Any
 
+from .output_tracing import (
+    PARTIAL_EXECUTION_TARGETS_INPUT,
+    partial_execution_targets_from_extra_pnginfo,
+)
+
 
 _WIDGET_INPUT_TYPES = {"STRING", "INT", "FLOAT", "BOOLEAN"}
 _HIDDEN_ATTRIBUTE = {
@@ -87,11 +92,20 @@ def _input_from_v1(io, name: str, spec: Any, *, optional: bool):
 
 def _schema_hidden(io, input_types: Mapping[str, Any]) -> list[Any]:
     hidden = []
-    for hidden_type in (input_types.get("hidden") or {}).values():
+    for name, hidden_type in (input_types.get("hidden") or {}).items():
+        if name == PARTIAL_EXECUTION_TARGETS_INPUT:
+            # V3 has no arbitrary hidden-string facility.  The shared frontend
+            # stores these global roots inside EXTRA_PNGINFO workflow metadata.
+            item = io.Hidden.extra_pnginfo
+            if item not in hidden:
+                hidden.append(item)
+            continue
         if isinstance(hidden_type, (tuple, list)):
             hidden_type = hidden_type[0] if hidden_type else None
         try:
-            hidden.append(io.Hidden(_type_name(hidden_type)))
+            item = io.Hidden(_type_name(hidden_type))
+            if item not in hidden:
+                hidden.append(item)
         except (TypeError, ValueError):
             raise TypeError(f"Unsupported V1 hidden input type: {hidden_type!r}") from None
     return hidden
@@ -190,6 +204,11 @@ def _hidden_kwargs(adapter_class: type, legacy_class: type) -> dict[str, Any]:
     hidden_specs = legacy_class.INPUT_TYPES().get("hidden") or {}
     values = {}
     for name, hidden_type in hidden_specs.items():
+        if name == PARTIAL_EXECUTION_TARGETS_INPUT:
+            values[name] = partial_execution_targets_from_extra_pnginfo(
+                getattr(adapter_class.hidden, "extra_pnginfo", None)
+            )
+            continue
         if isinstance(hidden_type, (tuple, list)):
             hidden_type = hidden_type[0] if hidden_type else None
         attribute = _HIDDEN_ATTRIBUTE.get(_type_name(hidden_type))

@@ -37,6 +37,22 @@ export function annotatePartialExecutionTargets(prompt, targets, classTypes) {
     return changed;
 }
 
+export function annotatePartialExecutionTargetsWorkflow(workflow, targets) {
+    if (!workflow || typeof workflow !== "object") return 0;
+    const encoded = encodePartialExecutionTargets(targets);
+    workflow.extra ||= {};
+    if (encoded === null) {
+        if (Object.hasOwn(workflow.extra, PARTIAL_EXECUTION_TARGETS_INPUT)) {
+            delete workflow.extra[PARTIAL_EXECUTION_TARGETS_INPUT];
+            return 1;
+        }
+        return 0;
+    }
+    if (workflow.extra[PARTIAL_EXECUTION_TARGETS_INPUT] === encoded) return 0;
+    workflow.extra[PARTIAL_EXECUTION_TARGETS_INPUT] = encoded;
+    return 1;
+}
+
 export function installPartialExecutionTargetTransport(api, state) {
     if (state.installed) return state;
     const originalQueuePrompt = api.queuePrompt;
@@ -45,6 +61,10 @@ export function installPartialExecutionTargetTransport(api, state) {
             prompt?.output,
             options?.partialExecutionTargets,
             state.classTypes,
+        );
+        annotatePartialExecutionTargetsWorkflow(
+            prompt?.workflow,
+            options?.partialExecutionTargets,
         );
         return originalQueuePrompt.apply(this, arguments);
     };

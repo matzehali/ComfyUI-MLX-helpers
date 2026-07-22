@@ -97,10 +97,13 @@ def load(source):
   `requested_outputs_for_node` let a multi-output node declare the exact input
   names required by every output. The tracer walks backward from executable
   output nodes. The shared frontend forwards ComfyUI's selected partial-
-  execution roots through an opt-in hidden input, so previewing a cheap
-  scalar/path output does not schedule an unrelated image/model branch even
-  when other savers remain in the submitted prompt. Undeclared third-party
-  nodes conservatively retain all dependencies.
+  execution roots through an opt-in hidden input for V1 nodes and supported
+  `EXTRA_PNGINFO` workflow metadata for V3 adapters. The adapter translates the
+  metadata back to the same legacy hook argument, so node implementations do
+  not fork by API generation. Previewing a cheap scalar/path output therefore
+  does not schedule an unrelated image/model branch even when other savers
+  remain in the submitted prompt. Undeclared third-party nodes conservatively
+  retain all dependencies.
 
 Declare every output and delegate the normal ComfyUI lazy hook:
 
