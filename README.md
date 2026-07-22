@@ -89,6 +89,40 @@ def load(source):
   Packs using the helper `WEB_DIRECTORY` receive it automatically; packs with
   their own web directory call
   `install_widget_input_sync(web_dir)`.
+- **Output-aware lazy tracing** — `validate_output_dependencies`,
+  `mark_traced_inputs_lazy`, `required_inputs_for_node`, and
+  `requested_outputs_for_node` let a multi-output node declare the exact input
+  names required by every output. The tracer walks backward from executable
+  output nodes, so previewing a cheap scalar/path output does not schedule an
+  unrelated image/model branch. Undeclared third-party nodes conservatively
+  retain all dependencies.
+
+Declare every output and delegate the normal ComfyUI lazy hook:
+
+```python
+from comfyui_mlx_helpers import mark_traced_inputs_lazy, required_inputs_for_node
+
+class ExampleNode:
+    OUTPUT_INPUT_DEPENDENCIES = {
+        0: ("images",),
+        1: ("path",),
+    }
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return mark_traced_inputs_lazy({
+            "required": {"images": ("IMAGE",), "path": ("STRING",)},
+            "hidden": {"prompt": "PROMPT", "unique_id": "UNIQUE_ID"},
+        }, cls.OUTPUT_INPUT_DEPENDENCIES)
+
+    def check_lazy_status(self, prompt=None, unique_id=None, **kwargs):
+        return required_inputs_for_node(prompt, unique_id, type(self))
+```
+
+The node execution method must accept its hidden prompt/ID arguments and tolerate
+`None` for lazy inputs that are not part of the requested output path. ComfyUI
+does not expose partial-execution target IDs to node hooks, so the runtime-safe
+default traces all output nodes in the submitted prompt.
 
 For a pack that already owns its web directory:
 

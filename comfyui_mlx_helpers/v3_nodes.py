@@ -104,6 +104,14 @@ def _output_from_v1(io, output_type: Any, index: int, legacy_class: type):
     display_name = names[index] if index < len(names) else _type_name(output_type)
     tooltip = tooltips[index] if index < len(tooltips) else None
     is_output_list = bool(list_flags[index]) if index < len(list_flags) else False
+    if isinstance(output_type, (tuple, list)):
+        return io.Combo.Output(
+            id=f"output_{index}",
+            display_name=display_name,
+            options=list(output_type),
+            tooltip=tooltip,
+            is_output_list=is_output_list,
+        )
     return io.Custom(_type_name(output_type)).Output(
         id=f"output_{index}",
         display_name=display_name,
@@ -316,6 +324,9 @@ def adapt_v1_node(
         "define_schema": classmethod(define_schema),
         "execute": classmethod(execute),
     }
+
+    if hasattr(legacy_class, "OUTPUT_INPUT_DEPENDENCIES"):
+        attributes["OUTPUT_INPUT_DEPENDENCIES"] = legacy_class.OUTPUT_INPUT_DEPENDENCIES
 
     for old_name, new_name in (
         ("VALIDATE_INPUTS", "validate_inputs"),

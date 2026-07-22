@@ -59,6 +59,20 @@ class _LegacyScalarNode:
         return (text, len(text), "image-placeholder")
 
 
+class _LegacyComboOutputNode:
+    CATEGORY = "MLX/Test"
+    FUNCTION = "run"
+    RETURN_TYPES = (["exr", "png", "jpg"],)
+    RETURN_NAMES = ("file_type",)
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"file_type": (("exr", "png", "jpg"),)}}
+
+    def run(self, file_type):
+        return (file_type,)
+
+
 @unittest.skipUnless(v3_nodes_available(), "ComfyUI V3 API is not importable")
 class V3NodeAdapterTests(unittest.TestCase):
     def test_schema_keeps_serialized_contract_and_v3_identity(self):
@@ -103,6 +117,13 @@ class V3NodeAdapterTests(unittest.TestCase):
         node = adapt_v1_node("ScalarMLXNode", _LegacyScalarNode, sync_widget_inputs=True)
         output = node.execute(text="hello")
         self.assertEqual(output.ui["mlx_resolved_outputs"], [["hello", 5, None]])
+
+    def test_legacy_combo_output_becomes_a_v3_combo(self):
+        node = adapt_v1_node("ComboOutputNode", _LegacyComboOutputNode)
+        schema = node.GET_SCHEMA()
+        self.assertEqual(node.RETURN_TYPES, ["COMBO"])
+        self.assertEqual(schema.outputs[0].id, "output_0")
+        self.assertEqual(schema.outputs[0].display_name, "file_type")
 
     def test_mapping_keeps_ids_and_old_comfy_fallback_shape(self):
         result = adapt_v1_nodes(

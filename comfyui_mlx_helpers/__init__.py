@@ -11,7 +11,7 @@ version/logo/cleanup/model-resolution boilerplate::
 
 from __future__ import annotations
 
-from . import model_resolve, node_meta, v3_nodes, vlm_models
+from . import model_resolve, node_meta, output_tracing, v3_nodes, vlm_models
 from .model_resolve import (
     CUSTOM_MODEL_CHOICE,
     configured_models_dir,
@@ -43,6 +43,13 @@ from .node_meta import (
     for_repo,
     resolve_version,
     with_mlx_metadata,
+)
+from .output_tracing import (
+    mark_traced_inputs_lazy,
+    requested_outputs_for_node,
+    required_inputs_for_node,
+    trace_requested_outputs,
+    validate_output_dependencies,
 )
 from .video_normalize import (
     next_frame_count,
@@ -101,6 +108,7 @@ __all__ = [
     "model_resolve",
     "v3_nodes",
     "vlm_models",
+    "output_tracing",
     "WEB_DIRECTORY",
     "install_node_colors",
     "install_widget_input_sync",
@@ -141,6 +149,12 @@ __all__ = [
     "adapt_v1_node",
     "adapt_v1_nodes",
     "v3_nodes_available",
+    # output-aware lazy execution
+    "mark_traced_inputs_lazy",
+    "requested_outputs_for_node",
+    "required_inputs_for_node",
+    "trace_requested_outputs",
+    "validate_output_dependencies",
     # video normalization (shared across MLX ports)
     "normalize_video",
     "next_multiple",
