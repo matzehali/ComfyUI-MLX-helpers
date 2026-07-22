@@ -340,7 +340,9 @@ def adapt_v1_node(
 
     if "check_lazy_status" in legacy_class.__dict__:
         def check_lazy_status(cls, **kwargs):
-            return legacy_class().check_lazy_status(**kwargs)
+            values = dict(kwargs)
+            values.update(_hidden_kwargs(cls, legacy_class))
+            return legacy_class().check_lazy_status(**values)
         attributes["check_lazy_status"] = classmethod(check_lazy_status)
 
     return type(class_name, (io.ComfyNode,), attributes)

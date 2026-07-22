@@ -80,7 +80,10 @@ def load(source):
   stay on loader outputs/components. `v3_nodes_available()` allows a pack to
   retain its previous registration shim on older ComfyUI builds. Pass
   `sync_widget_inputs=True` to emit authoritative scalar input and output
-  values as intermediate UI data for the connected-widget display helper.
+  values as intermediate UI data for the connected-widget display helper. V3
+  lazy hooks receive their declared hidden prompt/unique-id values just like
+  execution hooks, so conditional upstream selection can inspect the submitted
+  graph without scheduling inactive branches.
 - **Live connected-widget display** — the shared web extension keeps a widget's
   saved value as its disconnected fallback while displaying the effective
   upstream value whenever its input is linked. Primitive upstream edits refresh

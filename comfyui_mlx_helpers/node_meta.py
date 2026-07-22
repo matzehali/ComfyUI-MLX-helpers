@@ -248,7 +248,7 @@ def for_repo(anchor, fallback: str = "v0.1", log_prefix: str = "MLX") -> RepoMet
 
 
 # --- the helpers package's own version (for the nodes it registers) ----------
-VERSION = resolve_version(__file__, "v0.13")
+VERSION = resolve_version(__file__, "v0.18")
 _self = RepoMeta(VERSION, "MLX-helpers")
 
 

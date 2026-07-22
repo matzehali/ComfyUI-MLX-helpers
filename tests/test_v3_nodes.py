@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from types import SimpleNamespace
 
 from comfyui_mlx_helpers.v3_nodes import adapt_v1_node, adapt_v1_nodes, v3_nodes_available
 
@@ -73,6 +74,36 @@ class _LegacyComboOutputNode:
         return (file_type,)
 
 
+class _LegacyLazyNode:
+    CATEGORY = "MLX/Test"
+    FUNCTION = "run"
+    RETURN_TYPES = ("STRING",)
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {"value": ("STRING", {"lazy": True})},
+            "hidden": {
+                "prompt_data": "PROMPT",
+                "unique_id": "UNIQUE_ID",
+            },
+        }
+
+    def check_lazy_status(
+        self,
+        value=None,
+        prompt_data=None,
+        unique_id=None,
+        **kwargs,
+    ):
+        if prompt_data == {"node": unique_id}:
+            return ["value"]
+        return []
+
+    def run(self, value, prompt_data=None, unique_id=None):
+        return (value,)
+
+
 @unittest.skipUnless(v3_nodes_available(), "ComfyUI V3 API is not importable")
 class V3NodeAdapterTests(unittest.TestCase):
     def test_schema_keeps_serialized_contract_and_v3_identity(self):
@@ -124,6 +155,14 @@ class V3NodeAdapterTests(unittest.TestCase):
         self.assertEqual(node.RETURN_TYPES, ["COMBO"])
         self.assertEqual(schema.outputs[0].id, "output_0")
         self.assertEqual(schema.outputs[0].display_name, "file_type")
+
+    def test_lazy_hook_receives_v3_hidden_prompt_and_unique_id(self):
+        node = adapt_v1_node("LazyMLXNode", _LegacyLazyNode)
+        node.hidden = SimpleNamespace(
+            prompt={"node": "lazy-7"},
+            unique_id="lazy-7",
+        )
+        self.assertEqual(node.check_lazy_status(value=None), ["value"])
 
     def test_mapping_keeps_ids_and_old_comfy_fallback_shape(self):
         result = adapt_v1_nodes(
