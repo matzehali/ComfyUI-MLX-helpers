@@ -68,11 +68,16 @@ def load(source):
   `resolve_vlm_choice` provide one compatible, local-first selector shared by
   VLM-MLX and nodes which embed VLM analysis. Model loading remains in the
   consumer so the helper stays architecture-neutral.
-- **MLX runtime** — `load_safetensors`, `aggressive_cleanup`,
+- **MLX runtime** — `load_safetensors`, `ShardedSafetensorIndex`,
+  `load_module_sharded`, `materialize`, `aggressive_cleanup`,
   `get_compiled_callable`, `clear_compiled_callables`, `mx_dtype`, `PRECISIONS`,
-  `torch_image_to_mx`, `mx_to_torch`, `torch_image_to_pil`, `AnyType` /
-  `ANY_TYPE`. Retain the compiled wrapper on the loaded component for
-  cross-prompt reuse, and clear it whenever that component's weights change.
+  `torch_image_to_mx`, `mx_to_torch`, `mx_video_frames_to_torch`,
+  `mx_audio_to_torch`, `torch_image_to_pil`, `AnyType` / `ANY_TYPE`.
+  `load_module_sharded` streams official Hugging Face shards directly into an
+  MLX module and validates the complete parameter-key contract without keeping
+  a duplicate full-model dictionary. Retain a compiled wrapper on the loaded
+  component for cross-prompt reuse, and clear it whenever that component's
+  weights change.
 - **ComfyUI V3 migration** — `adapt_v1_node` / `adapt_v1_nodes` produce genuine
   schema-backed V3 classes while retaining serialized node IDs, socket order,
   implementation math, and the V1 mapping fallback used by mixed node packs.
