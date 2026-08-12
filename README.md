@@ -75,9 +75,10 @@ def load(source):
   `mx_audio_to_torch`, `torch_image_to_pil`, `AnyType` / `ANY_TYPE`.
   `load_module_sharded` streams official Hugging Face shards directly into an
   MLX module and validates the complete parameter-key contract without keeping
-  a duplicate full-model dictionary. Retain a compiled wrapper on the loaded
-  component for cross-prompt reuse, and clear it whenever that component's
-  weights change.
+  a duplicate full-model dictionary. Its optional `(done, total)` progress
+  callback reports each shard only after it has been installed and materialized.
+  Retain a compiled wrapper on the loaded component for cross-prompt reuse, and
+  clear it whenever that component's weights change.
 - **ComfyUI V3 migration** — `adapt_v1_node` / `adapt_v1_nodes` produce genuine
   schema-backed V3 classes while retaining serialized node IDs, socket order,
   implementation math, and the V1 mapping fallback used by mixed node packs.

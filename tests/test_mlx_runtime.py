@@ -15,11 +15,27 @@ from comfyui_mlx_helpers.mlx_runtime import (
     get_compiled_callable,
     load_module_sharded,
     materialize,
+    mx_video_frames_to_torch,
 )
 
 
 class _Owner:
     pass
+
+
+class TensorConversionTests(unittest.TestCase):
+    def test_video_conversion_supports_both_common_vae_ranges(self):
+        minus_one_one = mx_video_frames_to_torch(mx.zeros((1, 3, 1, 2, 2)))
+        zero_one = mx_video_frames_to_torch(
+            mx.full((1, 3, 1, 2, 2), 0.25), value_range="zero_one"
+        )
+        self.assertEqual(tuple(minus_one_one.shape), (1, 2, 2, 3))
+        self.assertAlmostEqual(float(minus_one_one.mean()), 0.5)
+        self.assertAlmostEqual(float(zero_one.mean()), 0.25)
+
+    def test_video_conversion_rejects_unknown_range(self):
+        with self.assertRaisesRegex(ValueError, "value_range"):
+            mx_video_frames_to_torch(mx.zeros((1, 3, 1, 2, 2)), value_range="raw")
 
 
 class CompiledCallableTests(unittest.TestCase):
@@ -107,10 +123,17 @@ class ShardedSafetensorTests(unittest.TestCase):
             index = ShardedSafetensorIndex.discover(root)
             self.assertEqual(index.shard_names, ("part-1.safetensors", "part-2.safetensors"))
             model = Tiny()
-            report = load_module_sharded(model, root, status=lambda _message: None)
+            progress = []
+            report = load_module_sharded(
+                model,
+                root,
+                status=lambda _message: None,
+                progress=lambda done, total: progress.append((done, total)),
+            )
             materialize(model.first.weight, model.second.weight)
 
         self.assertEqual(report.shard_count, 2)
+        self.assertEqual(progress, [(1, 2), (2, 2)])
         self.assertEqual(report.missing_keys, ())
         self.assertTrue(mx.array_equal(model.first.weight, mx.ones((2, 2))).item())
         self.assertTrue(mx.array_equal(model.second.weight, mx.full((1, 2), 2.0)).item())

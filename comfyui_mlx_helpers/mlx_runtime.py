@@ -223,6 +223,7 @@ def load_module_sharded(
     strict: bool = True,
     materialize_weights: bool = True,
     status: Callable[[str], None] = print,
+    progress: Callable[[int, int], None] | None = None,
 ) -> ShardedLoadReport:
     """Load indexed safetensors into an ``mlx.nn.Module`` one shard at a time.
 
@@ -271,6 +272,8 @@ def load_module_sharded(
                 mx.eval(*(value for _key, value in transformed))
         del transformed, part
         aggressive_cleanup()
+        if progress is not None:
+            progress(shard_number, len(index.shard_names))
 
     missing = expected.difference(loaded)
     report = ShardedLoadReport(
@@ -310,14 +313,23 @@ def mx_to_torch(array):
     return torch.from_numpy(np.array(array, copy=False))
 
 
-def mx_video_frames_to_torch(frames):
-    """Convert ``[B,C,F,H,W]`` MLX video in ``[-1,1]`` to Comfy IMAGE."""
+def mx_video_frames_to_torch(frames, *, value_range: str = "minus_one_one"):
+    """Convert ``[B,C,F,H,W]`` MLX video to Comfy ``IMAGE`` frames.
+
+    ``value_range`` accepts ``"minus_one_one"`` for VAE output in ``[-1,1]``
+    or ``"zero_one"`` for already finalized pixels.
+    """
     import mlx.core as mx
     import numpy as np
     import torch
 
     value = frames if frames.dtype == mx.float32 else frames.astype(mx.float32)
-    value = (mx.clip(value, -1.0, 1.0) + 1.0) * 0.5
+    if value_range == "minus_one_one":
+        value = (mx.clip(value, -1.0, 1.0) + 1.0) * 0.5
+    elif value_range == "zero_one":
+        value = mx.clip(value, 0.0, 1.0)
+    else:
+        raise ValueError(f"Unsupported video value_range {value_range!r}")
     frames_np = np.array(value)[0]
     frames_np = np.transpose(frames_np, (1, 2, 3, 0))
     return torch.from_numpy(np.ascontiguousarray(frames_np))
