@@ -64,6 +64,7 @@ from .video_normalize import (
     next_frame_count,
     next_multiple,
     normalize_video,
+    resample_video_frames,
 )
 from .v3_nodes import adapt_v1_node, adapt_v1_nodes, v3_nodes_available
 from .vlm_models import discover_vlm_models, is_vlm_config, resolve_vlm_choice, vlm_model_dropdown

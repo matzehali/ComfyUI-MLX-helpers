@@ -79,6 +79,10 @@ def load(source):
   callback reports each shard only after it has been installed and materialized.
   Retain a compiled wrapper on the loaded component for cross-prompt reuse, and
   clear it whenever that component's weights change.
+- **Video geometry and timing** — `normalize_video`, `next_multiple`, and
+  `next_frame_count` provide model-valid padding; `resample_video_frames`
+  performs duration-preserving nearest-frame FPS conversion for NumPy arrays
+  and ComfyUI torch `IMAGE` batches (for example 111@25 fps → 107@24 fps).
 - **ComfyUI V3 migration** — `adapt_v1_node` / `adapt_v1_nodes` produce genuine
   schema-backed V3 classes while retaining serialized node IDs, socket order,
   implementation math, and the V1 mapping fallback used by mixed node packs.

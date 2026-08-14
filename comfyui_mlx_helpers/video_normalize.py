@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
+
 
 def next_multiple(value: int, multiple: int) -> int:
     """Smallest multiple of ``multiple`` that is >= ``value`` (>= ``multiple``)."""
@@ -28,6 +30,47 @@ def next_frame_count(frame_count: int, period: int, offset: int = 1) -> int:
     frame_count = max(1, int(frame_count))
     period = max(1, int(period))
     return int(math.ceil(max(0, frame_count - offset) / period) * period + offset)
+
+
+def resample_video_frames(frames, source_fps: float, target_fps: float):
+    """Duration-preserving nearest-frame rate conversion for IMAGE batches.
+
+    The mapping uses half-up frame-boundary rounding, matching the MiniMax H3
+    reference normalization path. It supports NumPy arrays and torch tensors
+    without moving torch data off its current device.
+
+    ``N`` source frames become ``round_half_up(N * target/source)`` frames. For
+    example, 111 frames at 25 fps become 107 frames at 24 fps while retaining
+    the original 4.44-second duration to within one output frame.
+    """
+    source_fps = float(source_fps)
+    target_fps = float(target_fps)
+    if source_fps <= 0 or target_fps <= 0:
+        raise ValueError("source_fps and target_fps must both be positive")
+    if not hasattr(frames, "shape") or len(frames.shape) < 1:
+        raise ValueError("frames must be an array or tensor with a frame axis")
+    frame_count = int(frames.shape[0])
+    if frame_count < 1:
+        raise ValueError("frames must contain at least one frame")
+    if source_fps == target_fps:
+        return frames
+
+    scale = target_fps / source_fps
+    slots = np.floor(np.arange(frame_count, dtype=np.float64) * scale + 0.5).astype(np.int64)
+    output_count = int(math.floor(frame_count * scale + 0.5))
+    repeats = np.diff(slots, append=output_count)
+    indices = np.repeat(np.arange(frame_count, dtype=np.int64), repeats)
+    if int(indices.shape[0]) != output_count:
+        raise RuntimeError("frame-rate conversion produced an inconsistent output count")
+
+    try:
+        import torch
+
+        if torch.is_tensor(frames):
+            return frames.index_select(0, torch.as_tensor(indices, dtype=torch.long, device=frames.device))
+    except ImportError:
+        pass
+    return np.asarray(frames)[indices]
 
 
 def normalize_video(
