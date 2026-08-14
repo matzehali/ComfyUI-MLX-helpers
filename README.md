@@ -83,6 +83,12 @@ def load(source):
   `next_frame_count` provide model-valid padding; `resample_video_frames`
   performs duration-preserving nearest-frame FPS conversion for NumPy arrays
   and ComfyUI torch `IMAGE` batches (for example 111@25 fps → 107@24 fps).
+- **EXR image sequences** — `resolve_frame_sequence`,
+  `linear_srgb_to_display`, and `load_exr_sequence` provide exact Nuke-style
+  `#` padding, missing-frame validation, optional scene-linear display
+  conversion, and per-frame resize-before-batch loading. OpenImageIO and Torch
+  are imported lazily from the ComfyUI environment; H3 and LTX own the thin
+  model-specific node surfaces.
 - **ComfyUI V3 migration** — `adapt_v1_node` / `adapt_v1_nodes` produce genuine
   schema-backed V3 classes while retaining serialized node IDs, socket order,
   implementation math, and the V1 mapping fallback used by mixed node packs.

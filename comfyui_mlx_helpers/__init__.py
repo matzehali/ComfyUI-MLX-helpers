@@ -11,7 +11,8 @@ version/logo/cleanup/model-resolution boilerplate::
 
 from __future__ import annotations
 
-from . import model_resolve, node_meta, output_tracing, v3_nodes, vlm_models
+from . import image_sequence, model_resolve, node_meta, output_tracing, v3_nodes, vlm_models
+from .image_sequence import linear_srgb_to_display, load_exr_sequence, resolve_frame_sequence
 from .model_resolve import (
     CUSTOM_MODEL_CHOICE,
     configured_models_dir,
@@ -142,6 +143,7 @@ __all__ = [
     "v3_nodes",
     "vlm_models",
     "output_tracing",
+    "image_sequence",
     "WEB_DIRECTORY",
     "install_node_colors",
     "install_widget_input_sync",
@@ -167,6 +169,10 @@ __all__ = [
     "is_vlm_config",
     "resolve_vlm_choice",
     "vlm_model_dropdown",
+    # image sequences
+    "resolve_frame_sequence",
+    "linear_srgb_to_display",
+    "load_exr_sequence",
     # mlx runtime
     "PRECISIONS",
     "mx_dtype",
